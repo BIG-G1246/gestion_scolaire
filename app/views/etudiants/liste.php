@@ -53,6 +53,9 @@
                        class="btn btn-sm btn-outline-primary">Notes</a>
                     <a href="<?= BASE_URL ?>/index.php?action=bulletin&amp;id=<?= (int) $etu["id"] ?>"
                        class="btn btn-sm btn-outline-success">Bulletin</a>
+                    <a href="<?= BASE_URL ?>/index.php?action=acces&amp;id=<?= (int) $etu["id"] ?>"
+                       class="btn btn-sm <?= $etu["a_acces"] ? "btn-outline-dark" : "btn-outline-warning" ?>"
+                       title="<?= $etu["a_acces"] ? "L'étudiant a un mot de passe" : "Pas encore d'accès à l'espace étudiant" ?>">🔑</a>
                     <a href="<?= BASE_URL ?>/index.php?action=modifier&amp;id=<?= (int) $etu["id"] ?>"
                        class="btn btn-sm btn-outline-secondary">Modifier</a>
 

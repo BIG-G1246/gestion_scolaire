@@ -136,9 +136,11 @@ class EtudiantController
         try {
             if ($id > 0) {
                 $this->modele->mettreAJour($id, $donnees);
+                journaliser("Étudiant modifié : " . $matricule);
                 flash("Étudiant modifié.");
             } else {
                 $this->modele->ajouter($donnees);
+                journaliser("Étudiant inscrit : " . $matricule . " (" . $prenom . " " . $nom . ")");
                 flash("Étudiant ajouté.");
             }
         } catch (PDOException $ex) {
@@ -168,13 +170,76 @@ class EtudiantController
         csrf_verifier();
 
         $id = (int) post("id");
+        $etudiant = $id > 0 ? $this->modele->parId($id) : null;
 
-        if ($id > 0 && $this->modele->supprimer($id)) {
+        if ($etudiant && $this->modele->supprimer($id)) {
+            supprimer_fichier_photo($etudiant["photo"]);
+            journaliser("Étudiant supprimé : " . $etudiant["matricule"]);
             flash("Étudiant supprimé.");
         } else {
             flash("Aucun étudiant n'a été supprimé.", "warning");
         }
 
+        rediriger("liste");
+    }
+
+    /** action=acces&id=3 : page pour donner un mot de passe à l'étudiant (espace étudiant) */
+    public function acces(array $erreurs = []): void
+    {
+        exiger_connexion();
+        $id = (int) ($_GET["id"] ?? post("id"));
+        $etudiant = $this->modele->parId($id);
+        if (!$etudiant) {
+            $this->introuvable();
+            return;
+        }
+        $titre = "Accès à l'espace étudiant";
+        require RACINE . "/app/views/etudiants/acces.php";
+    }
+
+    /** action=acces_enregistrer (POST) : définit ou retire le mot de passe */
+    public function accesEnregistrer(): void
+    {
+        exiger_connexion();
+        if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+            rediriger("liste");
+        }
+        csrf_verifier();
+
+        $id = (int) post("id");
+        $etudiant = $this->modele->parId($id);
+        if (!$etudiant) {
+            $this->introuvable();
+            return;
+        }
+
+        if (post("retirer") === "1") {
+            $this->modele->definirMotDePasse($id, null);
+            journaliser("Accès étudiant retiré : " . $etudiant["matricule"]);
+            flash("L'étudiant ne peut plus se connecter.", "warning");
+            rediriger("liste");
+        }
+
+        // Pas de post() ici : on ne retire pas les espaces d'un mot de passe.
+        $mdp = is_string($_POST["mdp"] ?? null) ? $_POST["mdp"] : "";
+        $confirmation = is_string($_POST["confirmation"] ?? null) ? $_POST["confirmation"] : "";
+
+        $erreurs = [];
+        if (mb_strlen($mdp) < 8) {
+            $erreurs[] = "Le mot de passe doit contenir au moins 8 caractères.";
+        }
+        if ($mdp !== $confirmation) {
+            $erreurs[] = "Les deux mots de passe ne sont pas identiques.";
+        }
+        if (!empty($erreurs)) {
+            $_GET["id"] = $id;
+            $this->acces($erreurs);
+            return;
+        }
+
+        $this->modele->definirMotDePasse($id, password_hash($mdp, PASSWORD_DEFAULT));
+        journaliser("Mot de passe étudiant défini : " . $etudiant["matricule"]);
+        flash("Mot de passe enregistré. L'étudiant se connecte avec le matricule " . $etudiant["matricule"] . ".");
         rediriger("liste");
     }
 

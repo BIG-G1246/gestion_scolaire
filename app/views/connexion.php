@@ -18,7 +18,7 @@
             <div class="text-center mb-4">
                 <div class="display-4 mb-2">🎓</div>
                 <h1 class="h4 fw-bold mb-1" style="color: var(--couleur-ecole);">Connexion</h1>
-                <p class="text-muted mb-0">Espace réservé au personnel</p>
+                <p class="text-muted mb-0">Personnel : votre identifiant. Étudiant : votre matricule.</p>
             </div>
 
             <?php if ($expire): ?>
@@ -38,7 +38,7 @@
                     <input type="text" name="login" id="login" class="form-control"
                            placeholder="Identifiant" autocomplete="username" required maxlength="50"
                            value="<?= e($login) ?>" <?= $erreur === "" ? "autofocus" : "" ?>>
-                    <label for="login">Identifiant</label>
+                    <label for="login">Identifiant ou matricule</label>
                 </div>
 
                 <div class="form-floating mb-4">

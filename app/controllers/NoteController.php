@@ -1,30 +1,29 @@
 <?php
 // app/controllers/NoteController.php
-// Saisie des notes d'un étudiant (grille de toutes les matières) et bulletin.
-// Accès : tout utilisateur connecté (membre ou admin), comme l'ajout et la modification d'étudiants.
+// Saisie des notes d'un étudiant par trimestre (grille de toutes les matières) et bulletin.
+// Accès : personnel connecté (secrétaire ou directeur). Le bulletin sert aussi à l'espace étudiant.
 
 class NoteController
 {
     private NoteModel $notes;
     private EtudiantModel $etudiants;
-    private ClasseModel $classes;
     private PDO $pdo;   // pour la transaction
 
     public function __construct(PDO $pdo)
     {
         $this->notes     = new NoteModel($pdo);
         $this->etudiants = new EtudiantModel($pdo);
-        $this->classes   = new ClasseModel($pdo);
         $this->pdo       = $pdo;
     }
 
-    /** action=notes&id=3 : affiche la grille de saisie */
+    /** action=notes&id=3&t=2 : affiche la grille de saisie du trimestre */
     public function saisie(): void
     {
         exiger_connexion();
-        $etudiant = $this->etudiantOu404((int) ($_GET["id"] ?? 0));
+        $etudiant  = $this->etudiantOu404((int) ($_GET["id"] ?? 0));
+        $trimestre = trimestre_demande();
 
-        $grille  = $this->notes->grille((int) $etudiant["id"]);
+        $grille  = $this->notes->grille((int) $etudiant["id"], $trimestre);
         $saisies = [];   // vide : la vue affiche les notes de la base
         $erreurs = [];
         $titre   = "Notes de " . $etudiant["prenom"] . " " . $etudiant["nom"];
@@ -40,8 +39,12 @@ class NoteController
         }
         csrf_verifier();
 
-        $etudiant = $this->etudiantOu404((int) post("etudiant_id"));
-        $grille   = $this->notes->grille((int) $etudiant["id"]);
+        $etudiant  = $this->etudiantOu404((int) post("etudiant_id"));
+        $trimestre = (int) post("trimestre");
+        if ($trimestre < 1 || $trimestre > 3) {
+            $trimestre = 1;
+        }
+        $grille = $this->notes->grille((int) $etudiant["id"], $trimestre);
 
         // $_POST["notes"] est un tableau [matiere_id => "12,5"]. On ne lit que les matières
         // qui existent vraiment (un id inventé dans le navigateur est ignoré).
@@ -82,9 +85,9 @@ class NoteController
         try {
             foreach ($valeurs as $mid => $valeur) {
                 if ($valeur === null) {
-                    $this->notes->supprimer((int) $etudiant["id"], $mid);
+                    $this->notes->supprimer((int) $etudiant["id"], $mid, $trimestre);
                 } else {
-                    $this->notes->enregistrer((int) $etudiant["id"], $mid, $valeur);
+                    $this->notes->enregistrer((int) $etudiant["id"], $mid, $trimestre, $valeur);
                 }
             }
             $this->pdo->commit();
@@ -93,39 +96,35 @@ class NoteController
             throw $ex;
         }
 
-        flash("Notes enregistrées.");
-        rediriger("bulletin", ["id" => (int) $etudiant["id"]]);   // Post/Redirect/Get
+        journaliser("Notes du trimestre " . $trimestre . " enregistrées : " . $etudiant["matricule"]);
+        flash("Notes du trimestre " . $trimestre . " enregistrées.");
+        rediriger("bulletin", ["id" => (int) $etudiant["id"], "t" => $trimestre]);   // Post/Redirect/Get
     }
 
-    /** action=bulletin&id=3 : bulletin imprimable */
+    /** action=bulletin&id=3&t=1 : bulletin imprimable (personnel) */
     public function bulletin(): void
     {
         exiger_connexion();
-        $etudiant = $this->etudiantOu404((int) ($_GET["id"] ?? 0));
+        $this->afficherBulletin((int) ($_GET["id"] ?? 0), trimestre_demande());
+    }
 
-        $grille  = $this->notes->grille((int) $etudiant["id"]);
-        $moyenne = $this->notes->moyenne((int) $etudiant["id"]);
-        $mention = mention($moyenne);
+    /**
+     * Prépare et affiche le bulletin d'un étudiant pour un trimestre.
+     * Public : l'espace étudiant l'appelle avec l'id de la SESSION (jamais celui de l'URL).
+     */
+    public function afficherBulletin(int $id, int $trimestre): void
+    {
+        $etudiant = $this->etudiantsAvecClasseOu404($id);
+        $classe_id = $etudiant["classe_id"] !== null ? (int) $etudiant["classe_id"] : null;
 
-        $classe  = null;
-        $rang    = null;
-        $effectif = 0;
-        if ($etudiant["classe_id"] !== null) {
-            $classe = $this->classes->parId((int) $etudiant["classe_id"]);
-            $classement = $this->notes->moyennesClasse((int) $etudiant["classe_id"]);
-            $effectif = count($classement);
-            // Rang = 1 + nombre d'élèves qui ont une moyenne strictement meilleure (gère les ex æquo).
-            if ($moyenne !== null) {
-                $rang = 1;
-                foreach ($classement as $c) {
-                    if ((float) $c["moyenne"] > $moyenne) {
-                        $rang++;
-                    }
-                }
-            }
-        }
+        $grille   = $this->notes->grille($id, $trimestre);
+        $resultat = $this->notes->rang($id, $classe_id, $trimestre);
+        $moyenne  = $resultat["moyenne"];
+        $rang     = $resultat["rang"];
+        $effectif = $resultat["effectif"];
+        $mention  = mention($moyenne);
 
-        $titre = "Bulletin de " . $etudiant["prenom"] . " " . $etudiant["nom"];
+        $titre = "Bulletin T" . $trimestre . " " . $etudiant["matricule"] . " " . $etudiant["nom"];
         require RACINE . "/app/views/notes/bulletin.php";
     }
 
@@ -134,10 +133,24 @@ class NoteController
     {
         $etudiant = $id > 0 ? $this->etudiants->parId($id) : null;
         if ($etudiant === null) {
-            http_response_code(404);
-            require RACINE . "/app/views/404.php";
-            exit;
+            $this->pageIntrouvable();
         }
         return $etudiant;
+    }
+
+    private function etudiantsAvecClasseOu404(int $id): array
+    {
+        $etudiant = $id > 0 ? $this->etudiants->avecClasse($id) : null;
+        if ($etudiant === null) {
+            $this->pageIntrouvable();
+        }
+        return $etudiant;
+    }
+
+    private function pageIntrouvable(): never
+    {
+        http_response_code(404);
+        require RACINE . "/app/views/404.php";
+        exit;
     }
 }
