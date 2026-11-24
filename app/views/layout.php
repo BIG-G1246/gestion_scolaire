@@ -11,17 +11,16 @@
     <nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background-color: #0b3d91;">
         <div class="container">
             <a class="navbar-brand fw-bold" href="<?= BASE_URL ?>/index.php?action=liste">🎓 Gestion Scolaire</a>
-            <?php if (est_admin()): ?>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= BASE_URL ?>/index.php?action=matieres">Matières</a>
-                </li>
-            <?php endif; ?>
-
             <?php if (est_connecte()): ?>
-                <ul class="navbar-nav me-auto flex-row">
+                <ul class="navbar-nav me-auto flex-row gap-3">
                     <li class="nav-item">
                         <a class="nav-link active" href="<?= BASE_URL ?>/index.php?action=liste">👥 Étudiants</a>
                     </li>
+                    <?php if (est_admin()): ?>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?= BASE_URL ?>/index.php?action=matieres">📚 Matières</a>
+                        </li>
+                    <?php endif; ?>
                 </ul>
 
                 <div class="d-flex align-items-center gap-2">

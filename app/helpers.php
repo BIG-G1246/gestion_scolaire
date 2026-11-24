@@ -129,3 +129,33 @@ function supprimer_fichier_photo(?string $nom): void
         unlink($chemin);
     }
 }
+
+/**
+ * Mention à partir d'une moyenne sur 20 (null = pas encore de note).
+ * Renvoie le texte et une couleur Bootstrap pour le badge.
+ */
+function mention(?float $moyenne): array
+{
+    if ($moyenne === null) {
+        return ["texte" => "Non classé", "couleur" => "secondary"];
+    }
+    if ($moyenne >= 16) {
+        return ["texte" => "Très bien", "couleur" => "success"];
+    }
+    if ($moyenne >= 14) {
+        return ["texte" => "Bien", "couleur" => "primary"];
+    }
+    if ($moyenne >= 12) {
+        return ["texte" => "Assez bien", "couleur" => "info"];
+    }
+    if ($moyenne >= 10) {
+        return ["texte" => "Passable", "couleur" => "warning"];
+    }
+    return ["texte" => "Insuffisant", "couleur" => "danger"];
+}
+
+/** Affiche une note ou une moyenne à la française : 12.50 devient "12,50". */
+function note_fr(?float $valeur): string
+{
+    return $valeur === null ? "—" : number_format($valeur, 2, ",", " ");
+}

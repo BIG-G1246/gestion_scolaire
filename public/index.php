@@ -20,6 +20,8 @@ require RACINE . "/app/controllers/EtudiantController.php";
 require RACINE . "/app/controllers/AuthController.php";
 require_once RACINE . '/app/models/MatiereModel.php';
 require_once RACINE . '/app/controllers/MatiereController.php';
+require_once RACINE . '/app/models/NoteModel.php';
+require_once RACINE . '/app/controllers/NoteController.php';
 
 verifier_expiration();
 
@@ -50,7 +52,7 @@ switch ($action) {
     case "supprimer":
         $controleur->supprimer();
         break;
-        case 'matieres':
+    case 'matieres':
         (new MatiereController($pdo))->liste();
         break;
     case 'matiere_formulaire':
@@ -61,6 +63,15 @@ switch ($action) {
         break;
     case 'matiere_supprimer':
         (new MatiereController($pdo))->supprimer();
+        break;
+    case "notes":
+        (new NoteController($pdo))->saisie();
+        break;
+    case "notes_enregistrer":
+        (new NoteController($pdo))->enregistrer();
+        break;
+    case "bulletin":
+        (new NoteController($pdo))->bulletin();
         break;
     default:
         http_response_code(404);
