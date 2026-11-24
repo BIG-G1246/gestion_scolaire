@@ -48,10 +48,30 @@ function est_admin(): bool
     return ($_SESSION["role"] ?? "") === "admin";
 }
 
+function est_etudiant(): bool
+{
+    return ($_SESSION["role"] ?? "") === "etudiant";
+}
+
+/** Pages du personnel (secrétaire ou directeur) : un étudiant connecté reçoit un 403. */
 function exiger_connexion(): void
 {
     if (!est_connecte()) {
         rediriger("connexion");
+    }
+    if (est_etudiant()) {
+        refuser();
+    }
+}
+
+/** Pages de l'espace étudiant : réservées aux étudiants connectés. */
+function exiger_etudiant(): void
+{
+    if (!est_connecte()) {
+        rediriger("connexion");
+    }
+    if (!est_etudiant()) {
+        refuser();
     }
 }
 
@@ -158,4 +178,67 @@ function mention(?float $moyenne): array
 function note_fr(?float $valeur): string
 {
     return $valeur === null ? "—" : number_format($valeur, 2, ",", " ");
+}
+
+
+/** Nom affiché du rôle (les valeurs en base restent admin / membre / etudiant). */
+function libelle_role(string $role): string
+{
+    return ["admin" => "Directeur", "membre" => "Secrétaire", "etudiant" => "Étudiant"][$role] ?? $role;
+}
+
+/** Jours de la semaine utilisés par l'emploi du temps (1 = lundi). */
+function jours(): array
+{
+    return [1 => "Lundi", 2 => "Mardi", 3 => "Mercredi", 4 => "Jeudi", 5 => "Vendredi", 6 => "Samedi"];
+}
+
+/** "07:30:00" devient "07h30". */
+function heure_fr(?string $heure): string
+{
+    return $heure === null ? "" : str_replace(":", "h", substr($heure, 0, 5));
+}
+
+/** "2026-12-07" devient "07/12/2026". */
+function date_fr(?string $date): string
+{
+    return $date === null ? "" : date("d/m/Y", strtotime($date));
+}
+
+/** Montant en FCFA : 75000 devient "75 000 FCFA". */
+function fcfa(int|float $montant): string
+{
+    return number_format($montant, 0, ",", " ") . " FCFA";
+}
+
+/**
+ * Trimestre demandé dans l'URL (?t=2), entre 1 et 3. Par défaut : le trimestre en cours
+ * (septembre à décembre = 1, janvier à mars = 2, avril à juillet = 3).
+ */
+function trimestre_demande(): int
+{
+    $t = (int) ($_GET["t"] ?? 0);
+    if ($t >= 1 && $t <= 3) {
+        return $t;
+    }
+    $mois = (int) date("n");
+    return $mois >= 9 ? 1 : ($mois <= 3 ? 2 : 3);
+}
+
+/**
+ * Écrit une ligne dans le journal d'activité (lu par le directeur).
+ * "global $pdo" : on réutilise la connexion créée dans config.php.
+ */
+function journaliser(string $action, ?string $utilisateur = null, ?string $role = null): void
+{
+    global $pdo;
+    $req = $pdo->prepare(
+        "INSERT INTO journal (utilisateur, role, action, ip) VALUES (:utilisateur, :role, :action, :ip)"
+    );
+    $req->execute([
+        "utilisateur" => $utilisateur ?? ($_SESSION["utilisateur"] ?? "visiteur"),
+        "role"        => $role ?? ($_SESSION["role"] ?? "-"),
+        "action"      => mb_substr($action, 0, 255),
+        "ip"          => $_SERVER["REMOTE_ADDR"] ?? null,
+    ]);
 }

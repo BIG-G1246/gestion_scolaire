@@ -1,6 +1,8 @@
 <?php
 // app/views/notes/bulletin.php
-// Variables reçues du contrôleur : $titre, $etudiant, $classe, $grille, $moyenne, $mention, $rang, $effectif
+// Variables reçues du contrôleur : $titre, $etudiant (avec 'classe'), $trimestre, $grille, $moyenne, $mention, $rang, $effectif
+// Utilisée par le personnel ET par l'espace étudiant (est_etudiant() change les liens).
+$base_lien = est_etudiant() ? "action=mon_bulletin" : "action=bulletin&amp;id=" . (int) $etudiant["id"];
 ob_start();
 ?>
 <style>
@@ -12,24 +14,37 @@ ob_start();
     }
 </style>
 
-<div class="d-flex flex-wrap justify-content-end gap-2 mb-3 no-print">
-    <a href="<?= BASE_URL ?>/index.php?action=notes&amp;id=<?= (int) $etudiant["id"] ?>" class="btn btn-outline-primary">✏️ Saisir les notes</a>
-    <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Imprimer</button>
-    <a href="<?= BASE_URL ?>/index.php?action=liste" class="btn btn-link">Retour à la liste</a>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 no-print">
+    <ul class="nav nav-pills">
+        <?php for ($t = 1; $t <= 3; $t++): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= $t === $trimestre ? "active" : "" ?>" href="<?= BASE_URL ?>/index.php?<?= $base_lien ?>&amp;t=<?= $t ?>">Trimestre <?= $t ?></a>
+            </li>
+        <?php endfor; ?>
+    </ul>
+    <div class="d-flex flex-wrap gap-2">
+        <?php if (!est_etudiant()): ?>
+            <a href="<?= BASE_URL ?>/index.php?action=notes&amp;id=<?= (int) $etudiant["id"] ?>&amp;t=<?= (int) $trimestre ?>" class="btn btn-outline-primary">✏️ Saisir les notes</a>
+        <?php endif; ?>
+        <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Imprimer</button>
+        <button type="button" class="btn btn-success" onclick="window.print()"
+                title="Dans la fenêtre d'impression, choisissez « Enregistrer au format PDF »">⬇️ Télécharger en PDF</button>
+    </div>
 </div>
+<p class="small text-muted no-print">Pour télécharger : cliquez sur « Télécharger en PDF », puis choisissez <strong>Enregistrer au format PDF</strong> comme imprimante.</p>
 
 <div class="card shadow-sm border-0 mx-auto" style="max-width: 800px;">
     <div class="card-body p-4">
         <div class="text-center border-bottom pb-3 mb-3">
             <div class="fw-bold" style="color: #0b3d91;">🎓 Gestion Scolaire</div>
-            <h1 class="h4 mb-0">Bulletin de notes</h1>
+            <h1 class="h4 mb-0">Bulletin de notes : trimestre <?= (int) $trimestre ?></h1>
             <small class="text-muted">Année scolaire <?= date("n") >= 9 ? date("Y") . "-" . (date("Y") + 1) : (date("Y") - 1) . "-" . date("Y") ?></small>
         </div>
 
         <div class="row g-2 mb-3">
             <div class="col-sm-6"><span class="text-muted">Nom :</span> <strong><?= e($etudiant["nom"] . " " . $etudiant["prenom"]) ?></strong></div>
             <div class="col-sm-6"><span class="text-muted">Matricule :</span> <strong><?= e($etudiant["matricule"]) ?></strong></div>
-            <div class="col-sm-6"><span class="text-muted">Classe :</span> <strong><?= $classe !== null ? e($classe["nom"]) : "Non affecté" ?></strong></div>
+            <div class="col-sm-6"><span class="text-muted">Classe :</span> <strong><?= $etudiant["classe"] !== null ? e($etudiant["classe"]) : "Non affecté" ?></strong></div>
             <?php if ($rang !== null): ?>
                 <div class="col-sm-6"><span class="text-muted">Rang :</span> <strong><?= (int) $rang ?><?= $rang === 1 ? "er" : "e" ?> sur <?= (int) $effectif ?></strong></div>
             <?php endif; ?>

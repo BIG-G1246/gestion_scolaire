@@ -1,6 +1,6 @@
 <?php
 // app/views/notes/saisie.php
-// Variables reçues du contrôleur : $titre, $etudiant, $grille, $saisies, $erreurs
+// Variables reçues du contrôleur : $titre, $etudiant, $trimestre, $grille, $saisies, $erreurs
 ob_start();
 ?>
 <div class="row justify-content-center">
@@ -11,6 +11,15 @@ ob_start();
                     <h1 class="h4 mb-0"><?= e($titre) ?></h1>
                     <span class="badge text-bg-light border"><?= e($etudiant["matricule"]) ?></span>
                 </div>
+
+                <ul class="nav nav-pills mb-3">
+                    <?php for ($t = 1; $t <= 3; $t++): ?>
+                        <li class="nav-item">
+                            <a class="nav-link <?= $t === $trimestre ? "active" : "" ?>"
+                               href="<?= BASE_URL ?>/index.php?action=notes&amp;id=<?= (int) $etudiant["id"] ?>&amp;t=<?= $t ?>">Trimestre <?= $t ?></a>
+                        </li>
+                    <?php endfor; ?>
+                </ul>
 
                 <?php if (!empty($erreurs)): ?>
                     <div class="alert alert-danger">
@@ -33,6 +42,7 @@ ob_start();
                     <form action="<?= BASE_URL ?>/index.php?action=notes_enregistrer" method="post">
                         <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                         <input type="hidden" name="etudiant_id" value="<?= (int) $etudiant["id"] ?>">
+                        <input type="hidden" name="trimestre" value="<?= (int) $trimestre ?>">
 
                         <div class="table-responsive">
                             <table class="table align-middle">
@@ -70,7 +80,7 @@ ob_start();
 
                         <div class="d-flex flex-wrap gap-2">
                             <button type="submit" class="btn btn-primary">💾 Enregistrer les notes</button>
-                            <a href="<?= BASE_URL ?>/index.php?action=bulletin&amp;id=<?= (int) $etudiant["id"] ?>" class="btn btn-outline-secondary">Voir le bulletin</a>
+                            <a href="<?= BASE_URL ?>/index.php?action=bulletin&amp;id=<?= (int) $etudiant["id"] ?>&amp;t=<?= (int) $trimestre ?>" class="btn btn-outline-secondary">Voir le bulletin</a>
                             <a href="<?= BASE_URL ?>/index.php?action=liste" class="btn btn-link">Retour à la liste</a>
                         </div>
                     </form>
