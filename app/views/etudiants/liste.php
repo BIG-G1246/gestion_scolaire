@@ -49,6 +49,10 @@
                     <?php endif; ?>
                 </td>
                 <td class="text-end text-nowrap">
+                    <a href="<?= BASE_URL ?>/index.php?action=notes&amp;id=<?= (int) $etu["id"] ?>"
+                       class="btn btn-sm btn-outline-primary">Notes</a>
+                    <a href="<?= BASE_URL ?>/index.php?action=bulletin&amp;id=<?= (int) $etu["id"] ?>"
+                       class="btn btn-sm btn-outline-success">Bulletin</a>
                     <a href="<?= BASE_URL ?>/index.php?action=modifier&amp;id=<?= (int) $etu["id"] ?>"
                        class="btn btn-sm btn-outline-secondary">Modifier</a>
 
