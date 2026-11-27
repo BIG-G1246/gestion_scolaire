@@ -18,6 +18,43 @@ class EtudiantModel
         )->fetchAll();
     }
 
+    /**
+     * Recherche par mot-clé : nom, prénom, nom complet, matricule ou classe.
+     * Pour la classe, on compare SANS les espaces : "6eA", "6e A" et "6e a" trouvent la classe "6e A".
+     */
+    public function rechercher(string $motCle): array
+    {
+        // addcslashes : % et _ sont des jokers en SQL, on les neutralise pour les chercher tels quels
+        $texte  = "%" . addcslashes($motCle, "%_\\") . "%";
+        $classe = "%" . addcslashes(str_replace(" ", "", $motCle), "%_\\") . "%";
+
+        $req = $this->pdo->prepare(
+            "SELECT e.id, e.matricule, e.nom, e.prenom, e.photo, (e.mdp_hash IS NOT NULL) AS a_acces, c.nom AS classe
+             FROM etudiants e
+             LEFT JOIN classes c ON c.id = e.classe_id
+             WHERE e.nom LIKE :t1
+                OR e.prenom LIKE :t2
+                OR e.matricule LIKE :t3
+                OR CONCAT(e.prenom, ' ', e.nom) LIKE :t4
+                OR CONCAT(e.nom, ' ', e.prenom) LIKE :t5
+                OR REPLACE(c.nom, ' ', '') LIKE :classe
+             ORDER BY c.nom, e.nom, e.prenom"
+        );
+        $req->execute(["t1" => $texte, "t2" => $texte, "t3" => $texte, "t4" => $texte, "t5" => $texte, "classe" => $classe]);
+        return $req->fetchAll();
+    }
+
+    /** Les étudiants d'une classe, par ordre alphabétique */
+    public function parClasse(int $classeId): array
+    {
+        $req = $this->pdo->prepare(
+            "SELECT id, matricule, nom, prenom, sexe, tel, photo, (mdp_hash IS NOT NULL) AS a_acces
+             FROM etudiants WHERE classe_id = :id ORDER BY nom, prenom"
+        );
+        $req->execute(["id" => $classeId]);
+        return $req->fetchAll();
+    }
+
     public function parId(int $id): ?array
     {
         $req = $this->pdo->prepare("SELECT * FROM etudiants WHERE id = :id");

@@ -4,8 +4,30 @@
     <a href="<?= BASE_URL ?>/index.php?action=formulaire" class="btn btn-success">➕ Ajouter</a>
 </div>
 
+<!-- Barre de recherche.
+     1) Sans JavaScript : le formulaire envoie ?q=... au serveur, qui filtre en SQL (EtudiantModel::rechercher).
+     2) Avec JavaScript : le tableau se filtre en direct pendant la frappe, sans recharger la page (script en bas). -->
+<form method="get" action="<?= BASE_URL ?>/index.php" class="card border-0 shadow-sm mb-3" role="search">
+    <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+        <input type="hidden" name="action" value="liste">
+        <div class="input-group" style="flex: 1 1 220px; width: auto;">
+            <span class="input-group-text bg-white">🔍</span>
+            <input type="search" name="q" id="recherche" class="form-control" maxlength="50" autocomplete="off"
+                   value="<?= e($q) ?>" placeholder="Nom, prénom, matricule ou classe (ex. 3e, 6eA)"
+                   aria-label="Rechercher un étudiant">
+        </div>
+        <button type="submit" class="btn btn-primary">Rechercher</button>
+        <?php if ($q !== ""): ?>
+            <a href="<?= BASE_URL ?>/index.php?action=liste" class="btn btn-outline-secondary">Effacer</a>
+        <?php endif; ?>
+        <span class="text-muted small ms-auto" id="compteur" aria-live="polite">
+            <?= count($etudiants) ?> étudiant<?= count($etudiants) > 1 ? "s" : "" ?>
+        </span>
+    </div>
+</form>
+
 <div class="table-responsive">
-    <table class="table table-striped table-hover align-middle bg-white">
+    <table class="table table-striped table-hover align-middle bg-white" id="tableEtudiants">
         <thead class="table-primary">
             <tr>
                 <th>N°</th>
@@ -20,12 +42,19 @@
         <tbody>
         <?php if (empty($etudiants)): ?>
             <tr>
-                <td colspan="7" class="text-center text-muted py-4">Aucun étudiant inscrit pour le moment.</td>
+                <td colspan="7" class="text-center text-muted py-4">
+                    <?= $q === "" ? "Aucun étudiant inscrit pour le moment." : "Aucun étudiant ne correspond à « " . e($q) . " »." ?>
+                </td>
             </tr>
         <?php else: ?>
             <?php foreach ($etudiants as $i => $etu): ?>
-            <tr>
-                <td><?= $i + 1 ?></td>
+            <?php
+            // Texte utilisé par le filtre en direct : nom, prénom (dans les deux sens), matricule, classe sans espace
+            $cherche = mb_strtolower($etu["nom"] . " " . $etu["prenom"] . " " . $etu["prenom"] . " " . $etu["nom"] . " " . $etu["matricule"]);
+            $classe_cherche = mb_strtolower(str_replace(" ", "", $etu["classe"] ?? ""));
+            ?>
+            <tr data-texte="<?= e($cherche) ?>" data-classe="<?= e($classe_cherche) ?>">
+                <td class="numero"><?= $i + 1 ?></td>
                 <td>
                     <?php if (!empty($etu["photo"])): ?>
                         <img src="<?= BASE_URL ?>/uploads/<?= e($etu["photo"]) ?>"
@@ -72,9 +101,45 @@
             </tr>
             <?php endforeach; ?>
         <?php endif; ?>
+        <tr id="aucunResultat" class="d-none">
+            <td colspan="7" class="text-center text-muted py-4">Aucun étudiant ne correspond à cette recherche.</td>
+        </tr>
         </tbody>
     </table>
 </div>
+
+<script>
+// Filtre en direct : à chaque touche, on cache les lignes qui ne contiennent pas le texte tapé.
+(function () {
+    const champ = document.getElementById("recherche");
+    const lignes = document.querySelectorAll("#tableEtudiants tbody tr[data-texte]");
+    const compteur = document.getElementById("compteur");
+    const aucun = document.getElementById("aucunResultat");
+
+    // "Élodie" devient "elodie" : on compare sans majuscules ni accents
+    const normaliser = (t) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    champ.addEventListener("input", function () {
+        const texte = normaliser(champ.value.trim());
+        const sansEspace = texte.replace(/\s+/g, "");
+        let visibles = 0;
+
+        lignes.forEach(function (ligne) {
+            const ok = texte === ""
+                || normaliser(ligne.dataset.texte).includes(texte)
+                || (sansEspace !== "" && normaliser(ligne.dataset.classe).includes(sansEspace));
+            ligne.classList.toggle("d-none", !ok);
+            if (ok) {
+                visibles++;
+                ligne.querySelector(".numero").textContent = visibles; // renumérote 1, 2, 3...
+            }
+        });
+
+        compteur.textContent = visibles + " étudiant" + (visibles > 1 ? "s" : "");
+        aucun.classList.toggle("d-none", visibles > 0 || lignes.length === 0);
+    });
+})();
+</script>
 <?php
 $contenu = ob_get_clean();
 require RACINE . "/app/views/layout.php";
