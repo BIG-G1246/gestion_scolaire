@@ -15,7 +15,10 @@ class EtudiantController
         exiger_connexion();
         
         $titre = "Liste des étudiants";
-        $etudiants = $this->modele->tous();
+        // ?q=... : mot-clé de recherche (nom, prénom, matricule ou classe). Vide = tous les étudiants.
+        $q = trim((string) ($_GET["q"] ?? ""));
+        $q = mb_substr($q, 0, 50);
+        $etudiants = $q === "" ? $this->modele->tous() : $this->modele->rechercher($q);
         require RACINE . "/app/views/etudiants/liste.php";
     }
 

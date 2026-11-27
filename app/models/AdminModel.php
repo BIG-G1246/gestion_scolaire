@@ -118,6 +118,18 @@ class AdminModel
         )->fetchAll();
     }
 
+    /** Une classe avec son effectif, ou null si elle n'existe pas */
+    public function classeParId(int $id): ?array
+    {
+        $req = $this->pdo->prepare(
+            "SELECT c.id, c.nom, COUNT(e.id) AS effectif
+             FROM classes c LEFT JOIN etudiants e ON e.classe_id = c.id
+             WHERE c.id = :id GROUP BY c.id, c.nom"
+        );
+        $req->execute(["id" => $id]);
+        return $req->fetch() ?: null;
+    }
+
     public function ajouterClasse(string $nom): void
     {
         $req = $this->pdo->prepare("INSERT INTO classes (nom) VALUES (:nom)");

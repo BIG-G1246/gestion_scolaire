@@ -113,7 +113,7 @@ switch ($action) {
         (new PlanningController($pdo))->compositionSupprimer();
         break;
 
-    // Directeur uniquement
+    // Directeur (classes et classe : aussi la secrétaire, en lecture)
     case "matieres":
         (new MatiereController($pdo))->liste();
         break;
@@ -128,6 +128,9 @@ switch ($action) {
         break;
     case "classes":
         (new AdminController($pdo))->classes();
+        break;
+    case "classe":
+        (new AdminController($pdo))->classe();
         break;
     case "classe_enregistrer":
         (new AdminController($pdo))->classeEnregistrer();

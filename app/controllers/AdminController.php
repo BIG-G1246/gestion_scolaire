@@ -1,7 +1,8 @@
 <?php
 // app/controllers/AdminController.php
-// Pages du directeur uniquement : caisse, journal d'activité, comptes du personnel, classes.
-// exiger_admin() en première ligne de CHAQUE méthode.
+// Pages du directeur : caisse, journal d'activité, comptes du personnel, gestion des classes.
+// exiger_admin() en première ligne de chaque méthode, sauf la consultation des classes
+// (classes, classe) ouverte aussi à la secrétaire avec exiger_connexion().
 
 class AdminController
 {
@@ -179,10 +180,29 @@ class AdminController
     /** action=classes */
     public function classes(array $erreurs = [], string $nom = ""): void
     {
-        exiger_admin();
+        // Liste des classes : ouverte à la secrétaire et au directeur.
+        // Créer ou supprimer une classe reste réservé au directeur (exiger_admin plus bas).
+        exiger_connexion();
         $classes = $this->admin->classesAvecEffectif();
         $titre   = "Classes";
         require RACINE . "/app/views/admin/classes.php";
+    }
+
+    /** action=classe&id=3 : une classe, son effectif et la liste de ses étudiants (secrétaire et directeur) */
+    public function classe(): void
+    {
+        exiger_connexion();
+        $classe = $this->admin->classeParId((int) ($_GET["id"] ?? 0));
+        if (!$classe) {
+            http_response_code(404);
+            require RACINE . "/app/views/404.php";
+            return;
+        }
+        $etudiants = $this->etudiants->parClasse((int) $classe["id"]);
+        $filles  = count(array_filter($etudiants, fn($e) => $e["sexe"] === "Feminin"));
+        $garcons = count(array_filter($etudiants, fn($e) => $e["sexe"] === "Masculin"));
+        $titre = "Classe " . $classe["nom"];
+        require RACINE . "/app/views/admin/classe.php";
     }
 
     /** action=classe_enregistrer (POST) */
